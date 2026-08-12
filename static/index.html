@@ -88,6 +88,8 @@
   .assumptions .k { color: var(--dim); font-size: 11px; text-transform: uppercase; letter-spacing: 0.08em; }
   .assumptions ul { margin: 6px 0 0 16px; color: #728499; font-size: 12px; }
   .infeasible { border: 1px solid #5c2626; background: #241010; color: #ffb3b3; padding: 12px 14px; border-radius: 10px; font-size: 14px; }
+  #mapwrap { display: none; margin-top: 14px; }
+  #map { height: 300px; border-radius: 10px; border: 1px solid var(--line); background: #0d1218; }
   .errbox { display: none; margin-top: 18px; border: 1px solid #5c2626; background: #241010; color: #ffb3b3; padding: 12px 14px; border-radius: 10px; font-size: 13.5px; white-space: pre-wrap; }
   footer { margin-top: 26px; color: #4a5b6e; font-size: 12px; }
 </style>
@@ -137,6 +139,7 @@ const esc = s => String(s ?? "").replace(/[&<>"]/g, c => ({"&":"&amp;","<":"&lt;
 async function loadVehicle() {
   try {
     const v = await (await fetch("/api/vehicle")).json();
+    window.__vehicle = v;
     $("vname").textContent = `${v.year} ${v.make} ${v.model}`;
     $("vsoc").textContent = `${Math.round(v.battery_pct)}%`;
     $("vrange").textContent = v.range_mi != null ? `${Math.round(v.range_mi)} mi` : "n/a";
@@ -215,9 +218,67 @@ function renderResult(r) {
             <span class="soc-chip">${p.arrival_soc}%</span></div><div class="t2">arrive</div></div>`;
     h += `</div>`;
   }
+  h += `<div id="mapwrap"><div id="map"></div></div>`;
   h += `<div class="assumptions"><div class="k">Assumptions</div><ul>` +
        (p.assumptions || []).map(a => `<li>${esc(a)}</li>`).join("") + `</ul></div>`;
   pc.innerHTML = h;
+  try { if (p.feasible) initMap(p); } catch (e) { const w = $("mapwrap"); if (w) w.remove(); }
+}
+
+// P1 map (display-only). The map div stays hidden until the FIRST basemap tile
+// actually loads — any CDN/tile/OSRM failure leaves the page exactly as before.
+const CITY_LL = { atlanta:[33.7490,-84.3880], nashville:[36.1627,-86.7816], chattanooga:[35.0456,-85.3097],
+  knoxville:[35.9606,-83.9207], memphis:[35.1495,-90.0490], birmingham:[33.5186,-86.8104],
+  huntsville:[34.7304,-86.5861], charlotte:[35.2271,-80.8431], asheville:[35.5951,-82.5515],
+  savannah:[32.0809,-81.0912], macon:[32.8407,-83.6324], augusta:[33.4735,-82.0105],
+  greenville:[34.8526,-82.3940], columbia:[34.0007,-81.0348] };
+function cityLL(label) {
+  const k = String(label || "").toLowerCase().split(",")[0].trim().replace(/\s*\(.*$/, "");
+  return CITY_LL[k] || null;
+}
+function loadLeaflet(cb) {
+  if (window.L) return cb();
+  const css = document.createElement("link");
+  css.rel = "stylesheet"; css.href = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.css";
+  document.head.appendChild(css);
+  const js = document.createElement("script");
+  js.src = "https://unpkg.com/leaflet@1.9.4/dist/leaflet.js";
+  js.onload = () => { try { cb(); } catch (e) { const w = $("mapwrap"); if (w) w.remove(); } };
+  js.onerror = () => { const w = $("mapwrap"); if (w) w.remove(); };
+  document.head.appendChild(js);
+}
+function initMap(p) {
+  const origin = window.__vehicle ? [window.__vehicle.lat, window.__vehicle.lon] : cityLL(p.origin);
+  const dest = cityLL(p.destination);
+  if (!origin || !dest) return;
+  loadLeaflet(() => {
+    const map = L.map("map", { zoomControl: false, attributionControl: true });
+    const tiles = L.tileLayer("https://{s}.basemaps.cartocdn.com/dark_all/{z}/{x}/{y}{r}.png",
+      { attribution: "&copy; OpenStreetMap &copy; CARTO", subdomains: "abcd", maxZoom: 19 });
+    tiles.once("tileload", () => {   // proof tiles work -> reveal
+      $("mapwrap").style.display = "block";
+      setTimeout(() => { try { map.invalidateSize(); map.fitBounds(bounds, { padding: [24, 24] }); } catch (e) {} }, 60);
+    });
+    tiles.addTo(map);
+    const pts = [origin, ...p.stops.map(s => [s.charger.lat, s.charger.lon]), dest];
+    const bounds = L.latLngBounds(pts);
+    map.fitBounds(bounds, { padding: [24, 24] });
+    const dot = (ll, color, html) => L.circleMarker(ll, { radius: 7, color, weight: 2.5,
+      fillColor: "#121821", fillOpacity: 1 }).addTo(map).bindPopup(html);
+    dot(origin, "#4aa3ff", `<b>${esc(p.origin)}</b><br>depart`);
+    for (const s of p.stops)
+      dot([s.charger.lat, s.charger.lon], "#35e08c",
+        `<b>${esc(s.charger.name)}</b><br>${esc(s.charger.network)}<br>${s.arrive_soc}% &rarr; ${s.depart_soc}% &middot; ${s.charge_min} min`);
+    dot(dest, "#4aa3ff", `<b>${esc(p.destination)}</b><br>arrive at ${p.arrival_soc}%`);
+    const straight = () => L.polyline(pts, { color: "#4aa3ff", weight: 3, dashArray: "6 7", opacity: 0.85 }).addTo(map);
+    fetch(`https://router.project-osrm.org/route/v1/driving/${origin[1]},${origin[0]};${dest[1]},${dest[0]}?overview=full&geometries=geojson`)
+      .then(r => r.json())
+      .then(d => {
+        if (d.code === "Ok") L.geoJSON(d.routes[0].geometry, { style: { color: "#4aa3ff", weight: 3.5, opacity: 0.9 } }).addTo(map);
+        else straight();
+      })
+      .catch(straight);
+  });
 }
 
 let polling = null;
