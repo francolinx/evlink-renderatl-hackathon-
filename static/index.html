@@ -127,7 +127,7 @@
     <div class="card" id="plancard"></div>
   </div>
 
-  <footer>EVLink &middot; Hack RenderATL 2026 &middot; Gemini 2.5 Flash function-calling &middot; OSRM routing &middot; US DOE AFDC chargers &middot; deterministic battery math</footer>
+  <footer>EVLink &middot; Hack RenderATL 2026 &middot; Gemini function-calling &middot; OSRM routing &middot; US DOE AFDC chargers &middot; deterministic battery math</footer>
 </div>
 
 <script>
@@ -175,10 +175,21 @@ function renderSteps(job) {
   box.innerHTML = h;
 }
 
+function mdLite(t) {
+  // display-only: bold, ### headings, * bullets, --- rules (input is already escaped)
+  return t.split("\n").map(line => {
+    let l = line.replace(/\*\*(.+?)\*\*/g, "<b>$1</b>");
+    if (/^\s*#{2,4}\s+/.test(l)) return `<div style="font-weight:700;color:var(--accent2);margin:10px 0 2px">${l.replace(/^\s*#{2,4}\s+/, "")}</div>`;
+    if (/^\s*---+\s*$/.test(l)) return `<div style="border-top:1px dashed var(--line);margin:8px 0"></div>`;
+    if (/^\s*\*\s+/.test(l)) return `<div style="padding-left:14px">&bull; ${l.replace(/^\s*\*\s+/, "")}</div>`;
+    return l ? `<div>${l}</div>` : "";
+  }).join("");
+}
+
 function renderResult(r) {
   $("result").style.display = "block";
-  const who = r.mode === "gemini" ? "Gemini 2.5 Flash" : "Direct mode (no LLM)";
-  $("gtext").innerHTML = `<span class="who">${who}</span>` + esc(r.text || "");
+  const who = r.mode === "gemini" ? ("Gemini · " + (r.model || "flash")) : "Direct mode (no LLM)";
+  $("gtext").innerHTML = `<span class="who">${who}</span>` + mdLite(esc(r.text || ""));
   const p = r.trip_plan, pc = $("plancard");
   if (!p) { pc.style.display = "none"; return; }
   pc.style.display = "block";

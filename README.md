@@ -12,7 +12,7 @@ Built entirely during **Hack RenderATL 2026** (Aug 12, 2026).
 ## Architecture
 
 ```
-UI ──text──► POST /api/chat ──► Gemini 2.5 Flash (function-calling loop)
+UI ──text──► POST /api/chat ──► Gemini Flash (function-calling loop)
                                   │ tool 1: get_vehicle_state ─► Smartcar test-mode vehicle
                                   │ tool 2: plan_ev_trip ──────► OSRM route → AFDC chargers
                                   │                               → deterministic optimizer → TripPlan
@@ -26,7 +26,7 @@ so the deterministic chain never depends on the model sequencing five calls.
 
 ## Gemini integration (genuine function calling)
 
-`gemini-2.5-flash` via REST `v1beta:generateContent` with two `functionDeclarations`. Every
+`gemini-3.6-flash` (default; override with `GEMINI_MODEL` — 2.5-flash is sunset for new API projects) via REST `v1beta:generateContent` with two `functionDeclarations`. Every
 `functionCall` the model emits is executed against the real backend and its structured result
 returned as a `functionResponse`; the UI logs each call it actually made (`🔧 Gemini →
 plan_ev_trip({...})`). Gemini handles **intent**; it is instructed to never estimate battery,
