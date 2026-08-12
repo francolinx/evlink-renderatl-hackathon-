@@ -1,4 +1,4 @@
-"""Gemini 2.5 Flash function-calling loop (REST v1beta:generateContent).
+"""Gemini Flash function-calling loop (REST v1beta:generateContent).
 
 Two genuine tools; every functionCall the model emits is executed against the
 real backend and its structured result returned as a functionResponse. If
@@ -16,7 +16,8 @@ from .models import TripPlan, VehicleState
 from .planner import plan_ev_trip
 from .vehicle import get_vehicle_state
 
-MODEL = "gemini-2.5-flash"
+# gemini-2.5-flash is sunset for new API projects (404); 3.6-flash verified live tonight
+MODEL = os.environ.get("GEMINI_MODEL", "gemini-3.6-flash").strip()
 URL = f"https://generativelanguage.googleapis.com/v1beta/models/{MODEL}:generateContent"
 
 SYSTEM_INSTRUCTION = (
@@ -133,6 +134,7 @@ def chat(message: str,
         "trip_plan": last_plan.model_dump() if last_plan else None,
         "vehicle": last_vehicle.model_dump() if last_vehicle else None,
         "mode": "gemini",
+        "model": MODEL,
     }
 
 
