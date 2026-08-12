@@ -1,0 +1,18 @@
+services:
+  - type: web
+    name: evlink
+    runtime: python
+    plan: free
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    envVars:
+      - key: GEMINI_API_KEY
+        sync: false
+      - key: SMARTCAR_CLIENT_ID
+        sync: false
+      - key: SMARTCAR_CLIENT_SECRET
+        sync: false
+      - key: SMARTCAR_REDIRECT_URI
+        sync: false
+      - key: SMARTCAR_MODE
+        value: simulated
