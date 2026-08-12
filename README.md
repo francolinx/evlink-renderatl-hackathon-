@@ -84,6 +84,10 @@ uvicorn app.main:app --port 8000
 Tests: `python -m pytest` — 11 tests including the ATL→Nashville optimizer validation
 (248.7 mi @ 42% SOC → 1–2 stops).
 
+## Devpost
+
+Hack RenderATL 2026 submission: **[paste Devpost link here after submitting]**
+
 ## Endpoints
 
 | Route | Purpose |
