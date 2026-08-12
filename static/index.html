@@ -36,6 +36,9 @@
     border: 1px solid #1d5c3d; color: var(--accent); background: #0d2419;
   }
   .badge.static { border-color: #6b5320; color: var(--warn); background: #2a2010; }
+  .connect-btn { font-size: 12px; font-weight: 700; padding: 5px 12px; border-radius: 999px;
+    border: 1px solid var(--accent2); color: var(--accent2); text-decoration: none; white-space: nowrap; }
+  .connect-btn:hover { background: #10243a; }
   .vstats { display: flex; gap: 26px; margin-top: 14px; flex-wrap: wrap; }
   .stat .k { color: var(--dim); font-size: 11.5px; text-transform: uppercase; letter-spacing: 0.08em; }
   .stat .v { font-size: 17px; font-weight: 600; margin-top: 2px; }
@@ -105,7 +108,10 @@
   <div class="card" id="vcard">
     <div class="vrow">
       <div class="vname" id="vname">Loading vehicle…</div>
-      <span class="badge" id="vbadge" style="display:none"></span>
+      <span style="display:flex;gap:10px;align-items:center">
+        <span class="badge" id="vbadge" style="display:none"></span>
+        <a class="connect-btn" id="connectbtn" href="https://smartcar.com/product/connect" target="_blank" rel="noopener">Connect your car</a>
+      </span>
     </div>
     <div class="vstats">
       <div class="stat"><div class="k">Battery</div><div class="v" id="vsoc">–</div></div>
@@ -158,6 +164,7 @@ async function loadVehicle() {
     if (!h.gemini) { const bn = $("banner"); bn.style.display = "block";
       bn.textContent = "GEMINI_API_KEY not set — running in deterministic direct mode (no LLM). Set the key and restart to enable Gemini function-calling."; }
     if (h.smartcar_configured && !h.smartcar_connected) $("connectlink").style.display = "inline";
+    if (h.smartcar_configured) $("connectbtn").href = "/auth/login";
   } catch (e) {}
 }
 
